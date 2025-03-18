@@ -60,7 +60,7 @@ class DVLDriver(Node):
         self.dvl_frame = f"{self.robot_name}_{SamLinks.DVL_LINK}"
         
         self.pub_raw = self.create_publisher( String,SamTopics.DVL_RAW_TOPIC,qos_profile=10 )
-        self.pub_relay = self.create_publisher( Bool,SamTopics.DVL_RELAY_TOPIC,qos_profile=10)
+        self.pub_relay = self.create_publisher( Bool,SamTopics.DVL_CMD_TOPIC,qos_profile=10)
 
         # Waterlinked parameters
         self.TCP_IP = self.get_parameter("ip").value
@@ -76,7 +76,7 @@ class DVLDriver(Node):
         self.dvl_en_pub = self.create_publisher(Bool,'dvl_enable',  qos_profile=10)
 
         # Service to start/stop DVL and DVL data publisher
-        self.switch_srv = self.create_service(SetBool,SamTopics.DVL_ON_OFF_SERVICE,  self.dvl_switch_cb)
+        self.switch_srv = self.create_service(SetBool,SamTopics.DVL_TOGGLE_SRV,  self.dvl_switch_cb)
         self.dvl_pub = self.create_publisher(DVL,SamTopics.DVL_TOPIC,  qos_profile=10)
         # self.switch = False
 
@@ -119,7 +119,7 @@ class DVLDriver(Node):
         elif self.timeout is not None:
             timeout = min(timeout, self.timeout)
         if timeout is not None:
-            deadline = time() + timeout
+            deadline = time.time() + timeout
 
         return self.extract_data()
 
@@ -157,8 +157,6 @@ class DVLDriver(Node):
             return None
 
 
-
-
     def receive_dvl(self, raw_data):
 
         theDVL = DVL()
@@ -168,43 +166,43 @@ class DVLDriver(Node):
         beam3 = DVLBeam()
         data = json.loads(raw_data)
 
-        # edit: the logic in the original version can't actually publish the raw data
-        # we slightly change the if else statement so now
-        # do_log_raw_data is true: publish the raw data to /dvl/json_data topic, fill in theDVL using velocity data and publish to dvl/data topic
-        # do_log_raw_data is true: only fill in theDVL using velocity data and publish to dvl/data topic
-
         if self.do_log_raw_data:
             self.pub_raw.publish(raw_data)
 
-        theDVL.header.stamp = self.get_clock().now().to_msg()
-        theDVL.header.frame_id = self.dvl_frame
+        # Check if msg is DVL or odometry from device.
+        # DVL data contains the "time" key
+        if "time" in data:
 
-        theDVL.velocity.x = data["vx"]
-        theDVL.velocity.y = data["vy"]
-        theDVL.velocity.z = data["vz"]
-        theDVL.velocity_covariance[0] = data["covariance"][0][0]
-        theDVL.velocity_covariance[4] = data["covariance"][1][1]
-        theDVL.velocity_covariance[8] = data["covariance"][2][2]
-        theDVL.altitude = data["altitude"]
+            if data['velocity_valid']:
 
-        # Todo : Add beam covariances (not available for waterlinked)
+                theDVL.header.stamp = self.get_clock().now().to_msg()
+                theDVL.header.frame_id = self.dvl_frame
 
-        beam0.range = data["transducers"][0]["distance"]
-        beam0.velocity = data["transducers"][0]["velocity"]
+                theDVL.velocity.x = data["vx"]
+                theDVL.velocity.y = data["vy"]
+                theDVL.velocity.z = data["vz"]
+                theDVL.velocity_covariance[0] = data["covariance"][0][0]
+                theDVL.velocity_covariance[4] = data["covariance"][1][1]
+                theDVL.velocity_covariance[8] = data["covariance"][2][2]
+                theDVL.altitude = data["altitude"]
 
-        beam1.range = data["transducers"][1]["distance"]
-        beam1.velocity = data["transducers"][1]["velocity"]
+                # Todo : Add beam covariances (not available for waterlinked)
 
-        beam2.range = data["transducers"][2]["distance"]
-        beam2.velocity = data["transducers"][2]["velocity"]
+                beam0.range = data["transducers"][0]["distance"]
+                beam0.velocity = data["transducers"][0]["velocity"]
 
-        beam3.range = data["transducers"][3]["distance"]
-        beam3.velocity = data["transducers"][3]["velocity"]
+                beam1.range = data["transducers"][1]["distance"]
+                beam1.velocity = data["transducers"][1]["velocity"]
 
-        theDVL.beams = [beam0, beam1, beam2, beam3]
+                beam2.range = data["transducers"][2]["distance"]
+                beam2.velocity = data["transducers"][2]["velocity"]
 
-        if data['velocity_valid']:
-            self.dvl_pub.publish(theDVL)
+                beam3.range = data["transducers"][3]["distance"]
+                beam3.velocity = data["transducers"][3]["velocity"]
+
+                theDVL.beams = [beam0, beam1, beam2, beam3]
+
+                self.dvl_pub.publish(theDVL)
 
 
     def dvl_switch_cb(self, request: SetBool, response: SetBool):
