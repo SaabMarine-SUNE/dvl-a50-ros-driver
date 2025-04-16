@@ -167,7 +167,11 @@ class DVLDriver(Node):
         data = json.loads(raw_data)
 
         if self.do_log_raw_data:
-            self.pub_raw.publish(raw_data)
+            msg = String()
+            msg.data = raw_data
+            self.pub_raw.publish(msg)
+        
+        # return
 
         # Check if msg is DVL or odometry from device.
         # DVL data contains the "time" key
@@ -188,16 +192,16 @@ class DVLDriver(Node):
 
                 # Todo : Add beam covariances (not available for waterlinked)
 
-                beam0.range = data["transducers"][0]["distance"]
+                beam0.range = float(data["transducers"][0]["distance"])
                 beam0.velocity = data["transducers"][0]["velocity"]
 
-                beam1.range = data["transducers"][1]["distance"]
+                beam1.range = float(data["transducers"][1]["distance"])
                 beam1.velocity = data["transducers"][1]["velocity"]
 
-                beam2.range = data["transducers"][2]["distance"]
+                beam2.range = float(data["transducers"][2]["distance"])
                 beam2.velocity = data["transducers"][2]["velocity"]
 
-                beam3.range = data["transducers"][3]["distance"]
+                beam3.range = float(data["transducers"][3]["distance"])
                 beam3.velocity = data["transducers"][3]["velocity"]
 
                 theDVL.beams = [beam0, beam1, beam2, beam3]
