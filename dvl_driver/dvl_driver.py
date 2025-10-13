@@ -193,16 +193,16 @@ class DVLDriver(Node):
                 # Todo : Add beam covariances (not available for waterlinked)
 
                 beam0.range = float(data["transducers"][0]["distance"])
-                beam0.velocity = data["transducers"][0]["velocity"]
+                beam0.velocity = float(data["transducers"][0]["velocity"])
 
                 beam1.range = float(data["transducers"][1]["distance"])
-                beam1.velocity = data["transducers"][1]["velocity"]
+                beam1.velocity = float(data["transducers"][1]["velocity"])
 
                 beam2.range = float(data["transducers"][2]["distance"])
-                beam2.velocity = data["transducers"][2]["velocity"]
+                beam2.velocity = float(data["transducers"][2]["velocity"])
 
                 beam3.range = float(data["transducers"][3]["distance"])
-                beam3.velocity = data["transducers"][3]["velocity"]
+                beam3.velocity = float(data["transducers"][3]["velocity"])
 
                 theDVL.beams = [beam0, beam1, beam2, beam3]
 
